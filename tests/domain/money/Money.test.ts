@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Money } from '../../src/domain/Money.js';
+import { Money } from '../../../src/domain/money/Money.js';
 
 describe('Money', () => {
   it('creates money with a valid amount and currency', () => {
