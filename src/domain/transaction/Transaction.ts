@@ -1,25 +1,50 @@
 import { JournalEntryDirection } from '../enums/journal-entry.js';
-import { TransactionStatus } from '../enums/transaction.js';
+import { TransactionStatus, TransactionType } from '../enums/transaction.js';
 import { JournalEntry } from '../journal-entry/JournalEntry.js';
 
 export class Transaction {
   readonly id: string;
-  status: TransactionStatus;
-  private readonly entries: JournalEntry[] = [];
+  readonly type: TransactionType;
+  readonly reference: string | null;
+  readonly correlationId: string;
   readonly createdAt: Date;
 
-  constructor(id: string) {
+  private _status: TransactionStatus;
+  private readonly entries: JournalEntry[] = [];
+
+  constructor(
+    id: string,
+    type: TransactionType,
+    correlationId: string,
+    reference: string | null = null
+  ) {
+    if (!id) {
+      throw new Error('Transaction id is required');
+    }
+
+    if (!correlationId) {
+      throw new Error('Transaction correlation id is required');
+    }
+
     this.id = id;
-    this.status = TransactionStatus.PENDING;
+    this.type = type;
+    this.correlationId = correlationId;
+    this.reference = reference;
+
+    this._status = TransactionStatus.PENDING;
     this.createdAt = new Date();
+  }
+
+  get status(): TransactionStatus {
+    return this._status;
   }
 
   getEntries(): readonly JournalEntry[] {
     return this.entries;
   }
 
-  addEntry(entry: JournalEntry) {
-    if (this.status !== TransactionStatus.PENDING) {
+  addEntry(entry: JournalEntry): void {
+    if (this._status !== TransactionStatus.PENDING) {
       throw new Error('Only pending transactions can add entries');
     }
 
@@ -37,11 +62,8 @@ export class Transaction {
     this.entries.push(entry);
   }
 
-  post() {
-    let totalDebits = 0n;
-    let totalCredits = 0n;
-
-    if (this.status !== TransactionStatus.PENDING) {
+  post(): void {
+    if (this._status !== TransactionStatus.PENDING) {
       throw new Error('Only pending transactions can be posted');
     }
 
@@ -49,22 +71,28 @@ export class Transaction {
       throw new Error('Transaction must have at least two entries');
     }
 
+    let totalDebits = 0n;
+    let totalCredits = 0n;
+
     for (const entry of this.entries) {
       if (entry.direction === JournalEntryDirection.DEBIT) {
         totalDebits += entry.amount.amount;
       }
+
       if (entry.direction === JournalEntryDirection.CREDIT) {
         totalCredits += entry.amount.amount;
       }
     }
+
     if (totalDebits !== totalCredits) {
       throw new Error('Transaction is not balanced');
     }
-    this.status = TransactionStatus.POSTED;
+
+    this._status = TransactionStatus.POSTED;
   }
 
-  fail() {
-    if (this.status !== TransactionStatus.PENDING) {
+  fail(): void {
+    if (this._status !== TransactionStatus.PENDING) {
       throw new Error('Only pending transactions can fail');
     }
 
@@ -72,6 +100,14 @@ export class Transaction {
       throw new Error('Transaction with entries cannot be failed');
     }
 
-    this.status = TransactionStatus.FAILED;
+    this._status = TransactionStatus.FAILED;
+  }
+
+  reverse(): void {
+    if (this._status !== TransactionStatus.POSTED) {
+      throw new Error('Only posted transactions can be reversed');
+    }
+
+    this._status = TransactionStatus.REVERSED;
   }
 }
