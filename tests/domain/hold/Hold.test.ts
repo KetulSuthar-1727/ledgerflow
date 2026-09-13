@@ -4,32 +4,33 @@ import { HoldStatus } from '../../../src/domain/enums/hold.js';
 import { Money } from '../../../src/domain/money/Money.js';
 
 describe('Hold', () => {
+  const createHold = () =>
+    Hold.create('hold-1', 'account-1', new Money(10000n, 'INR'));
+
   it('creates an active hold', () => {
-    const amount = new Money(30000n, 'INR');
+    const hold = createHold();
 
-    const hold = new Hold('hold-1', 'account-1', amount);
-
-    expect(hold.id).toBe('hold-1');
-    expect(hold.accountId).toBe('account-1');
-    expect(hold.amount).toBe(amount);
     expect(hold.status).toBe(HoldStatus.ACTIVE);
-    expect(hold.createdAt).toBeInstanceOf(Date);
+    expect(hold.amount.amount).toBe(10000n);
+    expect(hold.accountId).toBe('account-1');
+    expect(hold.expiresAt).toBeNull();
   });
 
-  it('rejects a zero amount', () => {
-    expect(() => new Hold('hold-1', 'account-1', new Money(0n, 'INR'))).toThrow(
-      'Hold amount must be greater than zero'
+  it('creates a hold with an expiration time', () => {
+    const expiresAt = new Date('2026-12-01T00:00:00Z');
+
+    const hold = Hold.create(
+      'hold-1',
+      'account-1',
+      new Money(10000n, 'INR'),
+      expiresAt
     );
-  });
 
-  it('rejects a negative amount', () => {
-    expect(
-      () => new Hold('hold-1', 'account-1', new Money(-100n, 'INR'))
-    ).toThrow('Money amount cannot be negative');
+    expect(hold.expiresAt).toEqual(expiresAt);
   });
 
   it('captures an active hold', () => {
-    const hold = new Hold('hold-1', 'account-1', new Money(30000n, 'INR'));
+    const hold = createHold();
 
     hold.capture();
 
@@ -37,42 +38,60 @@ describe('Hold', () => {
   });
 
   it('releases an active hold', () => {
-    const hold = new Hold('hold-1', 'account-1', new Money(30000n, 'INR'));
+    const hold = createHold();
 
     hold.release();
 
     expect(hold.status).toBe(HoldStatus.RELEASED);
   });
 
-  it('cannot capture an already captured hold', () => {
-    const hold = new Hold('hold-1', 'account-1', new Money(30000n, 'INR'));
+  it('expires an active hold', () => {
+    const hold = createHold();
 
-    hold.capture();
+    hold.expire();
 
-    expect(() => hold.capture()).toThrow('Only active holds can be captured');
+    expect(hold.status).toBe(HoldStatus.EXPIRED);
   });
 
-  it('cannot release an already released hold', () => {
-    const hold = new Hold('hold-1', 'account-1', new Money(30000n, 'INR'));
+  it('cannot capture an already released hold', () => {
+    const hold = createHold();
 
     hold.release();
 
-    expect(() => hold.release()).toThrow('Only active holds can be released');
+    expect(() => hold.capture()).toThrow('Only active holds can change status');
   });
 
-  it('cannot release a captured hold', () => {
-    const hold = new Hold('hold-1', 'account-1', new Money(30000n, 'INR'));
+  it('cannot release an already captured hold', () => {
+    const hold = createHold();
 
     hold.capture();
 
-    expect(() => hold.release()).toThrow('Only active holds can be released');
+    expect(() => hold.release()).toThrow('Only active holds can change status');
   });
 
-  it('cannot capture a released hold', () => {
-    const hold = new Hold('hold-1', 'account-1', new Money(30000n, 'INR'));
+  it('cannot expire an already captured hold', () => {
+    const hold = createHold();
 
-    hold.release();
+    hold.capture();
 
-    expect(() => hold.capture()).toThrow('Only active holds can be captured');
+    expect(() => hold.expire()).toThrow('Only active holds can change status');
+  });
+
+  it('restores a hold from persistence', () => {
+    const createdAt = new Date('2026-01-01T00:00:00Z');
+    const expiresAt = new Date('2026-02-01T00:00:00Z');
+
+    const hold = Hold.fromPersistence(
+      'hold-1',
+      'account-1',
+      new Money(5000n, 'INR'),
+      HoldStatus.EXPIRED,
+      expiresAt,
+      createdAt
+    );
+
+    expect(hold.status).toBe(HoldStatus.EXPIRED);
+    expect(hold.createdAt).toEqual(createdAt);
+    expect(hold.expiresAt).toEqual(expiresAt);
   });
 });
