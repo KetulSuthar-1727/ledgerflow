@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run",
+    "migrate": "npx tsx src/infrastructure/database/migrate.ts"
   },
   "keywords": [],
   "author": "",
@@ -12,8 +13,13 @@
   "type": "module",
   "devDependencies": {
     "@types/node": "^26.5.0",
+    "@types/pg": "^8.23.1",
     "tsx": "^4.23.13",
     "typescript": "^7.0.2",
     "vitest": "^5.0.0"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "pg": "^8.23.0"
   }
 }
