@@ -14,7 +14,7 @@ describe('Transaction', () => {
     transactionId: string,
     id: string = 'entry-1'
   ): JournalEntry => {
-    return new JournalEntry(
+    return JournalEntry.create(
       id,
       transactionId,
       'account-1',
@@ -27,7 +27,7 @@ describe('Transaction', () => {
     transactionId: string,
     id: string = 'entry-2'
   ): JournalEntry => {
-    return new JournalEntry(
+    return JournalEntry.create(
       id,
       transactionId,
       'account-2',
@@ -100,7 +100,7 @@ describe('Transaction', () => {
 
     const firstEntry = createDebitEntry('transaction-1', 'entry-1');
 
-    const secondEntry = new JournalEntry(
+    const secondEntry = JournalEntry.create(
       'entry-2',
       'transaction-1',
       'account-2',
@@ -153,7 +153,7 @@ describe('Transaction', () => {
 
     transaction.addEntry(createDebitEntry('transaction-1'));
 
-    const creditEntry = new JournalEntry(
+    const creditEntry = JournalEntry.create(
       'entry-2',
       'transaction-1',
       'account-2',
@@ -248,7 +248,7 @@ describe('Transaction', () => {
 
     expect(() =>
       transaction.addEntry(
-        new JournalEntry(
+        JournalEntry.create(
           'entry-3',
           'transaction-1',
           'account-3',
