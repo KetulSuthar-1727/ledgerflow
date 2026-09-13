@@ -5,10 +5,27 @@ export class Hold {
   readonly id: string;
   readonly accountId: string;
   readonly amount: Money;
-  status: HoldStatus;
+  readonly expiresAt: Date | null;
   readonly createdAt: Date;
 
-  constructor(id: string, accountId: string, amount: Money) {
+  private _status: HoldStatus;
+
+  private constructor(
+    id: string,
+    accountId: string,
+    amount: Money,
+    status: HoldStatus,
+    expiresAt: Date | null,
+    createdAt: Date
+  ) {
+    if (!id) {
+      throw new Error('Hold id is required');
+    }
+
+    if (!accountId) {
+      throw new Error('Hold account id is required');
+    }
+
     if (amount.amount <= 0n) {
       throw new Error('Hold amount must be greater than zero');
     }
@@ -16,23 +33,60 @@ export class Hold {
     this.id = id;
     this.accountId = accountId;
     this.amount = amount;
-    this.status = HoldStatus.ACTIVE;
-    this.createdAt = new Date();
+    this._status = status;
+    this.expiresAt = expiresAt;
+    this.createdAt = createdAt;
   }
 
-  capture(): void {
-    if (this.status !== HoldStatus.ACTIVE) {
-      throw new Error('Only active holds can be captured');
-    }
-
-    this.status = HoldStatus.CAPTURED;
+  public static create(
+    id: string,
+    accountId: string,
+    amount: Money,
+    expiresAt: Date | null = null
+  ): Hold {
+    return new Hold(
+      id,
+      accountId,
+      amount,
+      HoldStatus.ACTIVE,
+      expiresAt,
+      new Date()
+    );
   }
 
-  release(): void {
-    if (this.status !== HoldStatus.ACTIVE) {
-      throw new Error('Only active holds can be released');
-    }
+  public static fromPersistence(
+    id: string,
+    accountId: string,
+    amount: Money,
+    status: HoldStatus,
+    expiresAt: Date | null,
+    createdAt: Date
+  ): Hold {
+    return new Hold(id, accountId, amount, status, expiresAt, createdAt);
+  }
 
-    this.status = HoldStatus.RELEASED;
+  get status(): HoldStatus {
+    return this._status;
+  }
+
+  public capture(): void {
+    this.ensureActive();
+    this._status = HoldStatus.CAPTURED;
+  }
+
+  public release(): void {
+    this.ensureActive();
+    this._status = HoldStatus.RELEASED;
+  }
+
+  public expire(): void {
+    this.ensureActive();
+    this._status = HoldStatus.EXPIRED;
+  }
+
+  private ensureActive(): void {
+    if (this._status !== HoldStatus.ACTIVE) {
+      throw new Error('Only active holds can change status');
+    }
   }
 }
